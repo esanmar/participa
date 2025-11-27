@@ -16,11 +16,11 @@ const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold">{t('contactUs')}</h3>
             <div className="flex items-center">
               <PhoneIcon className="w-5 h-5 mr-3" />
-              <span>{t('helpline')} <a href="tel:1800-123-4567" className="hover:underline">1800-123-4567</a></span>
+              <span>{t('helpline')} <a href="tel:945 18 18 18" className="hover:underline">945 18 18 18</a></span>
             </div>
             <div className="flex items-center">
               <EnvelopeIcon className="w-5 h-5 mr-3" />
-              <span>{t('emailSupport')} <a href="mailto:support@municipalcorp.gov.in" className="hover:underline">support@municipalcorp.gov.in</a></span>
+              <span>{t('emailSupport')} <a href="mailto:ccasaweb@araba.eus" className="hover:underline">ccasaweb@araba.eus </a></span>
             </div>
           </div>
 
@@ -54,7 +54,7 @@ const Footer: React.FC = () => {
           </div>
         </div>
         <div className="mt-8 pt-6 border-t border-gov-blue-500/50 text-center text-sm text-neutral-gray">
-            &copy; {new Date().getFullYear()} Municipal Corporation. All Rights Reserved.
+            &copy; {new Date().getFullYear()} Centro de Cálculo de Álava. All Rights Reserved.
         </div>
       </div>
     </footer>
