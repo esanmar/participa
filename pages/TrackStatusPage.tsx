@@ -23,6 +23,7 @@ const TrackStatusPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [ticketId, setTicketId] = useState(searchParams.get('ticketId') || '');
     const [complaint, setComplaint] = useState<Complaint | null>(null);
+    const [recentComplaints, setRecentComplaints] = useState<Complaint[]>([]);
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [error, setError] = useState('');
@@ -71,8 +72,9 @@ const TrackStatusPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (!ticketId || !complaint) return;
         const unsubscribe = subscribeToComplaints(allComplaints => {
+            setRecentComplaints(allComplaints);
+            if (!ticketId) return;
             const updatedComplaint = allComplaints.find(c => c.id.toLowerCase() === ticketId.toLowerCase());
             if (updatedComplaint && JSON.stringify(updatedComplaint) !== JSON.stringify(complaint)) {
                 setComplaint(updatedComplaint);
@@ -83,6 +85,11 @@ const TrackStatusPage: React.FC = () => {
 
     const handleTrack = () => {
         if (ticketId) loadComplaintData(ticketId);
+    };
+
+    const handleQuickView = (id: string) => {
+        setTicketId(id);
+        loadComplaintData(id);
     };
 
     const handleReopenSubmit = async () => {
@@ -163,6 +170,44 @@ const TrackStatusPage: React.FC = () => {
             </div>
 
             {loading && <Spinner />}
+
+            {!loading && recentComplaints.length > 0 && (
+                <div className="bg-neutral-white p-6 rounded-lg shadow-md mb-10">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
+                        <h2 className="text-2xl font-bold text-neutral-dark-gray">{t('recentComplaintsTitle')}</h2>
+                        <p className="text-sm text-gray-600">{t('recentComplaintsSubtitle')}</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {recentComplaints.slice(0, 6).map(item => (
+                            <div key={item.id} className="border border-neutral-gray/60 rounded-lg p-4 flex flex-col gap-3 bg-neutral-light-gray/40">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs uppercase tracking-wide text-gray-500">{item.category}</p>
+                                        <p className="font-semibold text-lg text-neutral-dark-gray">{item.id}</p>
+                                        <p className="text-sm text-gray-600">{item.location}</p>
+                                    </div>
+                                    <StatusBadge status={item.status} />
+                                </div>
+                                <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">{item.description}</p>
+                                <div className="flex items-center justify-between text-xs text-gray-500">
+                                    <span>{new Date(item.submittedAt).toLocaleDateString()}</span>
+                                    {item.assignedOfficial?.name && (
+                                        <span className="flex items-center gap-2">
+                                            <UserIcon className="h-4 w-4" />
+                                            {item.assignedOfficial.name}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center justify-end">
+                                    <Button variant="secondary" size="sm" onClick={() => handleQuickView(item.id)}>
+                                        {t('viewComplaint')}
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {complaint && (
                 <>
