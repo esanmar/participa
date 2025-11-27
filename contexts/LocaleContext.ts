@@ -8,7 +8,7 @@ export interface ILocaleContext {
 }
 
 const defaultValue: ILocaleContext = {
-    lang: 'en',
+    lang: 'es',
     setLang: () => {},
     t: (key: string) => key,
 };

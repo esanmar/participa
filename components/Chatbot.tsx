@@ -102,7 +102,7 @@ const Chatbot: React.FC = () => {
           addMessage('bot', `${t('chatbotSuccess')} ${result.ticketId}`);
           setConversationState('submitted_success');
       } catch (error) {
-          addMessage('bot', "Sorry, there was an error submitting your complaint. Please try again later.");
+          addMessage('bot', t('chatbotSubmitError'));
           resetConversation();
       } finally {
           setIsLoading(false);

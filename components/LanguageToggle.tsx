@@ -11,22 +11,22 @@ const LanguageToggle: React.FC<LanguageToggleProps> = ({ currentLang, onToggle }
   return (
     <div className="flex space-x-2">
       <Button
-        variant={currentLang === 'en' ? 'primary' : 'outline'}
-        onClick={() => onToggle('en')}
+        variant={currentLang === 'es' ? 'primary' : 'outline'}
+        onClick={() => onToggle('es')}
         className="text-sm px-4 py-2"
-        aria-label="Switch to English language"
-        aria-pressed={currentLang === 'en'}
+        aria-label="Cambiar a castellano"
+        aria-pressed={currentLang === 'es'}
       >
-        English
+        Español
       </Button>
       <Button
-        variant={currentLang === 'hi' ? 'primary' : 'outline'}
-        onClick={() => onToggle('hi')}
+        variant={currentLang === 'eu' ? 'primary' : 'outline'}
+        onClick={() => onToggle('eu')}
         className="text-sm px-4 py-2 font-sans"
-        aria-label="Switch to Hindi language"
-        aria-pressed={currentLang === 'hi'}
+        aria-label="Euskara aukeratu"
+        aria-pressed={currentLang === 'eu'}
       >
-        हिंदी
+        Euskara
       </Button>
     </div>
   );

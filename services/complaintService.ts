@@ -270,8 +270,22 @@ export const submitComplaint = async (data: FormData): Promise<{ ticketId: strin
   const category = data.get('category') as string;
   const description = data.get('description') as string;
 
-  // Get AI analysis for department, priority, etc.
-  const aiAnalysis = await getAiComplaintAnalysis(category, description);
+  // Get AI analysis for department, priority, etc. If it fails, continue with sensible defaults.
+  let aiAnalysis;
+  try {
+    aiAnalysis = await getAiComplaintAnalysis(category, description);
+  } catch (error) {
+    console.error('AI analysis failed, submitting complaint without AI insights:', error);
+    aiAnalysis = {
+      escalationDept: 'Public Works Dept.',
+      aiPriority: 'Medium' as const,
+      aiJustification: 'AI service not disponible. Se asigna una prioridad media por defecto.',
+      aiSummary: description,
+      aiRelevanceFlag: 'Actionable' as const,
+      aiActionRecommendation: 'Registrar la incidencia y asignarla al equipo correspondiente.',
+      aiConfidence: 75,
+    };
+  }
 
   // In a real app, you would handle file uploads to a storage service
   // and get a URL. Here we'll use a local blob URL for demonstration.
@@ -558,6 +572,11 @@ export const submitSatisfactionFeedback = async (
 };
 
 export const analyzeImage = async (imageFile: File): Promise<{ category: string; description: string }> => {
+  const fallback = {
+    category: 'other',
+    description: 'Adjunte una descripción breve del problema observado en la imagen.',
+  } as const;
+
   if (!process.env.API_KEY) {
     console.error("API_KEY is not set. Returning mock data.");
     return new Promise(resolve => {
@@ -573,7 +592,14 @@ export const analyzeImage = async (imageFile: File): Promise<{ category: string;
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
-    const base64Image = await fileToBase64(imageFile);
+    let base64Image: string;
+
+    try {
+      base64Image = await fileToBase64(imageFile);
+    } catch (conversionError) {
+      console.error('Base64 conversion failed, falling back to default analysis:', conversionError);
+      return fallback;
+    }
 
     const imagePart = {
       inlineData: {
@@ -585,7 +611,7 @@ export const analyzeImage = async (imageFile: File): Promise<{ category: string;
     const textPart = {
       text: `Analyze the attached image of a civic issue in an Indian city. Based on the image, identify the most appropriate category for the complaint and write a brief, objective description of the problem. The category must be one of the following: waste_management, road_maintenance, water_supply, street_lighting, public_safety, other. The description should be suitable for a formal complaint to municipal authorities.`
     };
-    
+
     const schema = {
       type: Type.OBJECT,
       properties: {
@@ -602,6 +628,15 @@ export const analyzeImage = async (imageFile: File): Promise<{ category: string;
       required: ['category', 'description'],
     };
 
+    const safeParse = (jsonText: string) => {
+      try {
+        return JSON.parse(jsonText);
+      } catch (parseError) {
+        console.error('Failed to parse AI JSON response:', parseError);
+        return null;
+      }
+    };
+
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-pro',
@@ -613,27 +648,28 @@ export const analyzeImage = async (imageFile: File): Promise<{ category: string;
       });
 
       const jsonText = response.text.trim();
-      const result = JSON.parse(jsonText);
-      
+      const result = safeParse(jsonText);
+
       if (result && typeof result.category === 'string' && typeof result.description === 'string') {
           const allowedCategories = ['waste_management', 'road_maintenance', 'water_supply', 'street_lighting', 'public_safety', 'other'];
           if (allowedCategories.includes(result.category)) {
               return { category: result.category, description: result.description };
           }
       }
-      
-      throw new Error('AI returned an invalid response structure. Please fill details manually.');
+
+      console.warn('AI returned an invalid response structure. Falling back to defaults.');
+      return fallback;
 
     } catch (error: any) {
       console.error('Error analyzing image with Gemini:', error);
-      if (error.message.includes('quota')) {
-          throw new Error('AI analysis service is temporarily unavailable due to high demand. Please try again later.');
+      if (error?.message && typeof error.message === 'string' && error.message.includes('quota')) {
+          return fallback;
       }
-      throw new Error('AI could not analyze the image clearly. Please try again or fill details manually.');
+      return fallback;
     }
   } catch (fileError) {
     console.error('Error processing file for analysis:', fileError);
-    throw new Error('There was a problem reading the image file. Please try uploading it again.');
+    return fallback;
   }
 };
 
