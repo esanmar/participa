@@ -124,7 +124,7 @@ const SubmitComplaintPage: React.FC = () => {
           setFormValid((prev) => ({ ...prev, photo: true }));
         } catch (err) {
             console.error("Image compression failed:", err);
-            setFormErrors(prev => ({ ...prev, photo: "Could not process image. Please try another one." }));
+            setFormErrors(prev => ({ ...prev, photo: t('imageProcessError') }));
             setFormValid(prev => ({ ...prev, photo: false }));
         }
       } else {
@@ -166,8 +166,7 @@ const SubmitComplaintPage: React.FC = () => {
       setHighlightedFields(['category', 'description']); // Highlight fields
     } catch (error) {
       console.error("AI analysis failed:", error);
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during analysis.';
-      setAnalysisError(errorMessage);
+      setAnalysisError(error instanceof Error ? error.message : t('analyzeUnknownError'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -264,9 +263,9 @@ const SubmitComplaintPage: React.FC = () => {
                     <div className="space-y-1 text-center">
                         {photoPreview ? (
                             <div className="relative group">
-                                <img src={photoPreview} alt="Complaint preview" className="mx-auto h-48 w-auto rounded-lg shadow-md" />
+                                <img src={photoPreview} alt={t('complaintDescription')} className="mx-auto h-48 w-auto rounded-lg shadow-md" />
                                 <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                                    <Button type="button" variant="warning" onClick={handleRemovePhoto} className="!py-1 !px-3 text-sm">Remove</Button>
+                                    <Button type="button" variant="warning" onClick={handleRemovePhoto} className="!py-1 !px-3 text-sm">{t('removePhoto')}</Button>
                                 </div>
                             </div>
                         ) : (
@@ -274,11 +273,11 @@ const SubmitComplaintPage: React.FC = () => {
                                 <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
                                 <div className="flex text-sm text-gray-600 justify-center">
                                     <span className="relative bg-white rounded-md font-medium text-gov-blue-500 hover:text-gov-blue-900">
-                                        <span>Upload a file</span>
+                                        <span>{t('uploadAFile')}</span>
                                     </span>
-                                    <p className="pl-1">or drag and drop</p>
+                                    <p className="pl-1">{t('orDragDrop')}</p>
                                 </div>
-                                <p className="text-xs text-gray-500">PNG, JPG, WEBP up to 10MB</p>
+                                <p className="text-xs text-gray-500">{t('uploadFormatsHint')}</p>
                             </label>
                         )}
                     </div>
@@ -292,30 +291,30 @@ const SubmitComplaintPage: React.FC = () => {
                     {isAnalyzing ? (
                         <div className="flex flex-col items-center justify-center">
                             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gov-blue-500 mb-2"></div>
-                            <p className="text-sm text-neutral-dark-gray font-semibold">AI is analyzing your image...</p>
+                            <p className="text-sm text-neutral-dark-gray font-semibold">{t('aiAnalyzingImage')}</p>
                         </div>
                     ) : analysisError ? (
                         <div>
                             <p className="text-sm text-red-600 mb-2">{analysisError}</p>
-                            <Button type="button" variant="outline" onClick={handleImageAnalysis}>Retry Analysis</Button>
+                            <Button type="button" variant="outline" onClick={handleImageAnalysis}>{t('retryAnalysis')}</Button>
                         </div>
                     ) : (
                         <div>
-                            <h4 className="font-semibold text-neutral-dark-gray">Next Step:</h4>
-                            <p className="text-sm text-gray-600 mb-2">Let AI help fill out the form based on your photo.</p>
+                            <h4 className="font-semibold text-neutral-dark-gray">{t('nextStep')}</h4>
+                            <p className="text-sm text-gray-600 mb-2">{t('aiAssistIntro')}</p>
                             <Button type="button" variant="primary" onClick={handleImageAnalysis} className="flex items-center gap-2 mx-auto">
                                 <SparklesIcon className="h-5 w-5" />
-                                {analysisCompleted ? 'Re-analyze with AI' : 'Analyze with AI'}
+                                {analysisCompleted ? t('reanalyzeWithAI') : t('analyzeWithAI')}
                             </Button>
-                            {analysisCompleted && <p className="text-sm text-action-green-500 flex items-center gap-1 justify-center mt-2"><CheckCircleIcon className="w-5 h-5"/>AI has filled in details below. Please review.</p>}
+                            {analysisCompleted && <p className="text-sm text-action-green-500 flex items-center gap-1 justify-center mt-2"><CheckCircleIcon className="w-5 h-5"/>{t('aiFilledDetails')}</p>}
                         </div>
                     )}
                 </div>
             )}
         </fieldset>
-        
+
         <fieldset className="border-t border-neutral-gray pt-4">
-          <legend className="text-lg font-semibold text-neutral-dark-gray px-2 -ml-2">2. Complaint Details</legend>
+          <legend className="text-lg font-semibold text-neutral-dark-gray px-2 -ml-2">{t('complaintDetailsSection')}</legend>
           <div className="space-y-4 mt-4">
             <div>
               <label htmlFor="category" className="block text-neutral-dark-gray text-sm font-medium mb-1">{t('complaintCategory')}</label>
@@ -348,18 +347,18 @@ const SubmitComplaintPage: React.FC = () => {
         </fieldset>
 
         <fieldset className="border-t border-neutral-gray pt-4">
-            <legend className="text-lg font-semibold text-neutral-dark-gray px-2 -ml-2">3. Your Contact Information</legend>
-            <p className="text-sm text-gray-600 mb-4">We'll send updates via SMS to this number.</p>
-            <Input id="contact" name="contact" label={t('yourMobileNumber')} type="tel" placeholder="e.g., 9876543210"
+            <legend className="text-lg font-semibold text-neutral-dark-gray px-2 -ml-2">{t('contactInfoSection')}</legend>
+            <p className="text-sm text-gray-600 mb-4">{t('smsUpdatesNote')}</p>
+            <Input id="contact" name="contact" label={t('yourMobileNumber')} type="tel" placeholder={t('contactPlaceholder')}
                 value={formData.contact} onChange={handleChange} onBlur={handleBlur} error={formErrors.contact} isValid={formValid.contact}
                 maxLength={10} inputMode="numeric" />
         </fieldset>
 
         <div className="pt-4">
           <Button type="submit" variant="secondary" className="w-full text-lg" disabled={submissionStatus === 'loading' || isAnalyzing}>
-            {submissionStatus === 'loading' ? 'Submitting...' : t('submit')}
+            {submissionStatus === 'loading' ? t('submitting') : t('submit')}
           </Button>
-          {submissionStatus === 'error' && <p className="mt-4 text-center text-red-500">Submission failed. Please try again.</p>}
+          {submissionStatus === 'error' && <p className="mt-4 text-center text-red-500">{t('submissionFailed')}</p>}
         </div>
       </form>
     </div>

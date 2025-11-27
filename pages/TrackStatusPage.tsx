@@ -15,12 +15,15 @@ import Spinner from '../components/Spinner';
 import TextArea from '../components/TextArea';
 import StarRating from '../components/StarRating';
 import SimilarComplaintCard from '../components/SimilarComplaintCard';
+import { useLocalization } from '../hooks/useLocalization';
 
 
 const TrackStatusPage: React.FC = () => {
+    const { t } = useLocalization();
     const [searchParams, setSearchParams] = useSearchParams();
     const [ticketId, setTicketId] = useState(searchParams.get('ticketId') || '');
     const [complaint, setComplaint] = useState<Complaint | null>(null);
+    const [recentComplaints, setRecentComplaints] = useState<Complaint[]>([]);
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [error, setError] = useState('');
@@ -69,8 +72,9 @@ const TrackStatusPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (!ticketId || !complaint) return;
         const unsubscribe = subscribeToComplaints(allComplaints => {
+            setRecentComplaints(allComplaints);
+            if (!ticketId) return;
             const updatedComplaint = allComplaints.find(c => c.id.toLowerCase() === ticketId.toLowerCase());
             if (updatedComplaint && JSON.stringify(updatedComplaint) !== JSON.stringify(complaint)) {
                 setComplaint(updatedComplaint);
@@ -83,9 +87,14 @@ const TrackStatusPage: React.FC = () => {
         if (ticketId) loadComplaintData(ticketId);
     };
 
+    const handleQuickView = (id: string) => {
+        setTicketId(id);
+        loadComplaintData(id);
+    };
+
     const handleReopenSubmit = async () => {
         if (reopenNotes.trim().length < 10) {
-            setReopenError("Please provide a reason (at least 10 characters).");
+            setReopenError(t('trackingValidation'));
             return;
         }
         if (!complaint) return;
@@ -96,7 +105,7 @@ const TrackStatusPage: React.FC = () => {
             setIsReopenModalOpen(false);
             setReopenNotes('');
         } catch (err) {
-            setError('Failed to reopen ticket. Please try again.');
+            setError(t('reopenFailed'));
         } finally {
             setActionLoading(false);
         }
@@ -104,7 +113,7 @@ const TrackStatusPage: React.FC = () => {
 
     const handleAddUpdate = async () => {
         if (!complaint || newComment.trim().length < 5) {
-            setError("Please enter a comment (at least 5 characters).");
+            setError(t('commentValidation'));
             return;
         }
         setActionLoading(true);
@@ -114,7 +123,7 @@ const TrackStatusPage: React.FC = () => {
             setNewComment('');
             setAdditionalPhoto(null);
         } catch (err) {
-            setError('Failed to add update. Please try again.');
+            setError(t('addUpdateFailed'));
         } finally {
             setActionLoading(false);
         }
@@ -122,7 +131,7 @@ const TrackStatusPage: React.FC = () => {
 
     const handleSubmitFeedback = async () => {
         if (!complaint || satisfactionRating === 0) {
-            setError("Please select a star rating before submitting.");
+            setError(t('ratingValidation'));
             return;
         }
         setActionLoading(true);
@@ -131,7 +140,7 @@ const TrackStatusPage: React.FC = () => {
             await submitSatisfactionFeedback(complaint.id, satisfactionRating, satisfactionFeedback, additionalPhoto);
             // The subscription will handle the UI update
         } catch (err) {
-            setError('Failed to submit feedback. Please try again.');
+            setError(t('feedbackFailed'));
         } finally {
             setActionLoading(false);
         }
@@ -150,11 +159,11 @@ const TrackStatusPage: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto">
             <div className="bg-neutral-white p-6 sm:p-8 rounded-lg shadow-md mb-8">
-                <h1 className="text-3xl font-bold text-neutral-dark-gray mb-6 text-center">Track Complaint Status</h1>
+                <h1 className="text-3xl font-bold text-neutral-dark-gray mb-6 text-center">{t('trackStatusTitle')}</h1>
                 <div className="flex flex-col sm:flex-row items-end gap-4">
-                    <Input id="ticketId" label="Enter your Ticket ID" value={ticketId} onChange={(e) => setTicketId(e.target.value)} className="flex-grow !mb-0" placeholder="e.g., TKT-12345" />
+                    <Input id="ticketId" label={t('enterTicketId')} value={ticketId} onChange={(e) => setTicketId(e.target.value)} className="flex-grow !mb-0" placeholder={t('trackPlaceholder')} />
                     <Button onClick={handleTrack} disabled={loading} className="w-full sm:w-auto">
-                        {loading ? 'Tracking...' : 'Track'}
+                        {loading ? t('tracking') : t('track')}
                     </Button>
                 </div>
                 {error && <p className="mt-4 text-center text-red-500">{error}</p>}
@@ -162,13 +171,51 @@ const TrackStatusPage: React.FC = () => {
 
             {loading && <Spinner />}
 
+            {!loading && recentComplaints.length > 0 && (
+                <div className="bg-neutral-white p-6 rounded-lg shadow-md mb-10">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
+                        <h2 className="text-2xl font-bold text-neutral-dark-gray">{t('recentComplaintsTitle')}</h2>
+                        <p className="text-sm text-gray-600">{t('recentComplaintsSubtitle')}</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {recentComplaints.slice(0, 6).map(item => (
+                            <div key={item.id} className="border border-neutral-gray/60 rounded-lg p-4 flex flex-col gap-3 bg-neutral-light-gray/40">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs uppercase tracking-wide text-gray-500">{item.category}</p>
+                                        <p className="font-semibold text-lg text-neutral-dark-gray">{item.id}</p>
+                                        <p className="text-sm text-gray-600">{item.location}</p>
+                                    </div>
+                                    <StatusBadge status={item.status} />
+                                </div>
+                                <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">{item.description}</p>
+                                <div className="flex items-center justify-between text-xs text-gray-500">
+                                    <span>{new Date(item.submittedAt).toLocaleDateString()}</span>
+                                    {item.assignedOfficial?.name && (
+                                        <span className="flex items-center gap-2">
+                                            <UserIcon className="h-4 w-4" />
+                                            {item.assignedOfficial.name}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center justify-end">
+                                    <Button variant="secondary" size="sm" onClick={() => handleQuickView(item.id)}>
+                                        {t('viewComplaint')}
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {complaint && (
                 <>
                     <div className="bg-neutral-white rounded-lg shadow-md animated-section">
                         <header className="p-6 border-b border-neutral-gray flex flex-col sm:flex-row justify-between items-start gap-4">
                             <div>
-                                <h2 className="text-2xl font-bold text-gov-blue-900">Ticket ID: {complaint.id}</h2>
-                                <p className="text-gray-600 mt-1">Category: <span className="font-medium text-neutral-dark-gray">{complaint.category}</span></p>
+                                <h2 className="text-2xl font-bold text-gov-blue-900">ID: {complaint.id}</h2>
+                                <p className="text-gray-600 mt-1">{t('complaintCategory')}: <span className="font-medium text-neutral-dark-gray">{complaint.category}</span></p>
                             </div>
                             <StatusBadge status={complaint.status} />
                         </header>
@@ -178,11 +225,11 @@ const TrackStatusPage: React.FC = () => {
                         </section>
                         
                         <section className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-neutral-light-gray/60 border-y border-neutral-gray">
-                           {complaint.assignedOfficial && (
+                            {complaint.assignedOfficial && (
                                 <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-4">
                                     <img src={complaint.assignedOfficial.photoUrl} alt={complaint.assignedOfficial.name} className="w-16 h-16 rounded-full" />
                                     <div>
-                                        <p className="text-sm text-gray-500">Assigned To</p>
+                                        <p className="text-sm text-gray-500">{t('assignedTo')}</p>
                                         <p className="font-bold text-lg text-neutral-dark-gray">{complaint.assignedOfficial.name}</p>
                                         <p className="text-sm text-gov-blue-900">{complaint.escalationDept}</p>
                                     </div>
@@ -190,19 +237,19 @@ const TrackStatusPage: React.FC = () => {
                            )}
                            {transparencyInsights && (
                                <div className="bg-white p-4 rounded-lg shadow-sm">
-                                   <h3 className="text-sm text-gray-500 mb-2">Transparency Insights</h3>
+                                   <h3 className="text-sm text-gray-500 mb-2">{t('transparencyInsights')}</h3>
                                    <div className="flex justify-around text-center">
                                        <div>
                                            <p className="font-bold text-lg text-neutral-dark-gray">{transparencyInsights.estimatedTime}</p>
-                                           <p className="text-xs text-gray-500">Est. Resolution</p>
+                                           <p className="text-xs text-gray-500">{t('estimatedResolution')}</p>
                                        </div>
                                        <div>
                                            <p className="font-bold text-lg text-neutral-dark-gray">#{transparencyInsights.queuePosition}</p>
-                                           <p className="text-xs text-gray-500">In Queue</p>
+                                           <p className="text-xs text-gray-500">{t('inQueue')}</p>
                                        </div>
                                        <div>
                                            <p className="font-bold text-lg text-neutral-dark-gray">{transparencyInsights.departmentWorkload}</p>
-                                           <p className="text-xs text-gray-500">Dept. Workload</p>
+                                           <p className="text-xs text-gray-500">{t('deptWorkload')}</p>
                                        </div>
                                    </div>
                                </div>
@@ -211,9 +258,9 @@ const TrackStatusPage: React.FC = () => {
 
                         <div className="border-b border-neutral-gray px-6 flex justify-between items-center">
                             <nav className="-mb-px flex space-x-2 sm:space-x-6" aria-label="Tabs">
-                                <TabButton name="details" label="Details" icon={DocumentTextIcon} />
-                                <TabButton name="evidence" label="Evidence" icon={PhotoIcon} />
-                                <TabButton name="history" label="History" icon={ClockIcon} />
+                                <TabButton name="details" label={t('detailsTab')} icon={DocumentTextIcon} />
+                                <TabButton name="evidence" label={t('evidenceTab')} icon={PhotoIcon} />
+                                <TabButton name="history" label={t('historyTab')} icon={ClockIcon} />
                             </nav>
                             <div className="flex items-center gap-2 py-2">
                                 <Button variant="ghost" className="!p-2"><QrCodeIcon className="w-5 h-5" /></Button>
@@ -225,17 +272,17 @@ const TrackStatusPage: React.FC = () => {
                             {activeTab === 'details' && (
                                 <div>
                                     <div className="space-y-4 mb-8">
-                                        <div className="space-y-1"><h3 className="text-sm font-semibold text-gray-500">Submitted On</h3><p className="text-neutral-dark-gray">{complaint.submittedAt.toLocaleString()}</p></div>
-                                        <div className="space-y-1"><h3 className="text-sm font-semibold text-gray-500">Location</h3><p className="text-neutral-dark-gray">{complaint.location}</p></div>
-                                        <div className="space-y-1"><h3 className="text-sm font-semibold text-gray-500">Your Description</h3><p className="text-neutral-dark-gray bg-neutral-light-gray p-3 rounded-md">{complaint.description}</p></div>
+                                        <div className="space-y-1"><h3 className="text-sm font-semibold text-gray-500">{t('submittedOn')}</h3><p className="text-neutral-dark-gray">{complaint.submittedAt.toLocaleString()}</p></div>
+                                        <div className="space-y-1"><h3 className="text-sm font-semibold text-gray-500">{t('locationLabel')}</h3><p className="text-neutral-dark-gray">{complaint.location}</p></div>
+                                        <div className="space-y-1"><h3 className="text-sm font-semibold text-gray-500">{t('yourDescription')}</h3><p className="text-neutral-dark-gray bg-neutral-light-gray p-3 rounded-md">{complaint.description}</p></div>
                                     </div>
                                     {(complaint.status === ComplaintStatus.IN_PROGRESS || complaint.status === ComplaintStatus.REOPENED) && (
                                         <div className="p-4 border-t border-neutral-gray mt-6 bg-neutral-light-gray/70 rounded-lg">
-                                            <h3 className="font-bold text-neutral-dark-gray mb-2">Add an Update</h3>
-                                            <TextArea id="new-comment" label="" placeholder="If the situation has changed, add a comment here..." value={newComment} onChange={e => setNewComment(e.target.value)} />
+                                            <h3 className="font-bold text-neutral-dark-gray mb-2">{t('addUpdate')}</h3>
+                                            <TextArea id="new-comment" label="" placeholder={t('updatePlaceholder')} value={newComment} onChange={e => setNewComment(e.target.value)} />
                                             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-2">
                                                 <input type="file" id="additional-photo" onChange={e => setAdditionalPhoto(e.target.files?.[0] || null)} className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gov-blue-50 file:text-gov-blue-700 hover:file:bg-gov-blue-100" />
-                                                <Button onClick={handleAddUpdate} disabled={actionLoading}>{actionLoading ? 'Submitting...' : 'Submit Update'}</Button>
+                                                <Button onClick={handleAddUpdate} disabled={actionLoading}>{actionLoading ? t('submitting') : t('addUpdate')}</Button>
                                             </div>
                                         </div>
                                     )}
@@ -244,11 +291,11 @@ const TrackStatusPage: React.FC = () => {
                              {activeTab === 'evidence' && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     {complaint.photoBeforeUrl ? (
-                                        <div><h3 className="font-bold text-neutral-dark-gray mb-2">Before</h3><img src={complaint.photoBeforeUrl} alt="Before" className="rounded-lg shadow-sm w-full h-auto object-cover"/></div>
-                                    ) : <p className="text-gray-500">No 'Before' photo was submitted.</p>}
+                                        <div><h3 className="font-bold text-neutral-dark-gray mb-2">{t('uploadBefore')}</h3><img src={complaint.photoBeforeUrl} alt={t('uploadBefore')} className="rounded-lg shadow-sm w-full h-auto object-cover"/></div>
+                                    ) : <p className="text-gray-500">{t('noBeforePhoto')}</p>}
                                     {complaint.photoAfterUrl ? (
-                                        <div><h3 className="font-bold text-neutral-dark-gray mb-2">After</h3><img src={complaint.photoAfterUrl} alt="After" className="rounded-lg shadow-sm w-full h-auto object-cover"/></div>
-                                    ) : <p className="text-gray-500">No 'After' photo available yet.</p>}
+                                        <div><h3 className="font-bold text-neutral-dark-gray mb-2">{t('uploadAfter')}</h3><img src={complaint.photoAfterUrl} alt={t('uploadAfter')} className="rounded-lg shadow-sm w-full h-auto object-cover"/></div>
+                                    ) : <p className="text-gray-500">{t('noAfterPhoto')}</p>}
                                 </div>
                             )}
                             {activeTab === 'history' && <ComplaintHistoryTimeline history={complaint.history} />}
@@ -256,31 +303,31 @@ const TrackStatusPage: React.FC = () => {
 
                         {complaint.status === ComplaintStatus.RESOLVED && (
                             <div className="border-t border-neutral-gray bg-neutral-light-gray p-6 rounded-b-lg">
-                                <h3 className="text-xl font-bold text-neutral-dark-gray mb-2 text-center">We believe this issue is resolved.</h3>
-                                <p className="text-center text-gray-600 mb-4">Help us improve! Please rate your experience.</p>
+                                <h3 className="text-xl font-bold text-neutral-dark-gray mb-2 text-center">{t('resolvedTitle')}</h3>
+                                <p className="text-center text-gray-600 mb-4">{t('rateExperience')}</p>
                                 <div className="max-w-md mx-auto">
                                     <StarRating rating={satisfactionRating} onRatingChange={setSatisfactionRating} />
                                     {satisfactionRating > 0 && (
                                         <div className="mt-6 space-y-4 animated-section">
-                                            <TextArea id="feedback-text" label="Add optional feedback" value={satisfactionFeedback} onChange={e => setSatisfactionFeedback(e.target.value)} />
+                                            <TextArea id="feedback-text" label={t('optionalFeedback')} value={satisfactionFeedback} onChange={e => setSatisfactionFeedback(e.target.value)} />
                                             <div>
-                                                <label htmlFor="resolution-photo" className="block text-sm font-medium text-gray-700 mb-1">Upload 'After' Photo (Optional)</label>
+                                                <label htmlFor="resolution-photo" className="block text-sm font-medium text-gray-700 mb-1">{t('afterPhotoOptional')}</label>
                                                 <input type="file" id="resolution-photo" onChange={e => setAdditionalPhoto(e.target.files?.[0] || null)} className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gov-blue-50 file:text-gov-blue-700 hover:file:bg-gov-blue-100" />
                                             </div>
-                                            <Button variant="secondary" onClick={handleSubmitFeedback} disabled={actionLoading} className="w-full">{actionLoading ? 'Submitting...' : 'Submit Feedback & Close'}</Button>
+                                            <Button variant="secondary" onClick={handleSubmitFeedback} disabled={actionLoading} className="w-full">{actionLoading ? t('submitting') : t('submitFeedback')}</Button>
                                         </div>
                                     )}
                                      <div className="text-center mt-6">
-                                        <Button variant="warning" onClick={() => setIsReopenModalOpen(true)} disabled={actionLoading}>Not Satisfied? Reopen Issue</Button>
+                                        <Button variant="warning" onClick={() => setIsReopenModalOpen(true)} disabled={actionLoading}>{t('reopenCta')}</Button>
                                     </div>
                                 </div>
                             </div>
                         )}
                         {complaint.status === ComplaintStatus.CLOSED && complaint.citizenSatisfactionScore && (
                             <div className="border-t border-neutral-gray bg-neutral-light-gray p-6 rounded-b-lg text-center">
-                                <h3 className="text-xl font-bold text-neutral-dark-gray mb-2">Thank you for your feedback!</h3>
+                                <h3 className="text-xl font-bold text-neutral-dark-gray mb-2">{t('thankYouFeedback')}</h3>
                                 <div className="flex justify-center items-center gap-2">
-                                    <p className="text-lg">Your rating:</p>
+                                    <p className="text-lg">{t('yourRating')}</p>
                                     <StarRating rating={complaint.citizenSatisfactionScore} readOnly />
                                 </div>
                             </div>
@@ -288,7 +335,7 @@ const TrackStatusPage: React.FC = () => {
                     </div>
                      {similarComplaints.length > 0 && (
                         <div className="mt-8">
-                            <h2 className="text-2xl font-bold text-neutral-dark-gray mb-4 text-center">Similar Resolved Issues Nearby</h2>
+                            <h2 className="text-2xl font-bold text-neutral-dark-gray mb-4 text-center">{t('similarResolved')}</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {similarComplaints.map(c => <SimilarComplaintCard key={c.id} complaint={c} />)}
                             </div>
